@@ -1,0 +1,104 @@
+//-----------------------------
+// Title: FirstAssemblyFile.asm
+//-----------------------------
+// Purpose: This program compares a ref temp to a measured temp to see if
+//heating or cooling should activate and converts the temps from hex to decimal
+// Dependencies: headerfile.inc
+// Compiler: MPLAB X IDE v6.20 - pic-as (v2.46)
+// Author: Joseph Walkup
+// OUTPUTS: measuredtempdecimal REG70-REG72, reftempdecimal REG60-REG62,
+//heater PORTD2, and cooler PORTD1
+// INPUTS: measuredtempinput and reftempinput
+// Versions:
+//  	V1.0: 3/3/24 
+//-----------------------------
+
+#include "./headerfile.inc"
+#include <xc.inc>
+;----------------
+; PROGRAM INPUTS
+;----------------
+measuredTempInput   equ 	0 ; this is the input value
+refTempInput	    equ 	15 ; this is the input value
+
+;----------------
+; REGISTERS
+;----------------
+measuredTempREG	    equ 	20H ; this is
+refTempREG	    equ		21H ; this is 
+contREG		    equ		22H
+
+;----------------
+;PROGRAM OUTPUTS
+;----------------
+#define  measuredTempDecimal 	0x70 ; this is the input value
+#define  refTempInputDecimal     ; this is the input value
+#define   HEATER      PORTD,2
+#define   COOLER  PORTD,1
+
+;----------------
+;Main
+;----------------
+    PSECT absdata,abs,ovrld
+    ORG	    0x20
+    MOVLW   0x00
+    MOVWF   TRISD,0
+    MOVLW   measuredTempInput
+    MOVWF   measuredTempREG,0
+    MOVLW   refTempInput
+    MOVWF   0x21,0
+    
+    MOVLW   measuredTempInput
+    CPFSEQ  0x21,0 ;skip next line if ref and measured temp are equal
+    GOTO    next1
+    MOVLW   0x00
+    MOVWF   0x22,1 ;REG22=0 
+    MOVWF   PORTD,0 ;LED_OFF
+    GOTO    back1
+next1:
+    MOVLW   measuredTempInput
+    CPFSGT  0x21,0 ;if ref temp is greater than measured temp skip next line
+    GOTO    next2
+    MOVLW   0x01 
+    MOVWF   0x22,0 ;REG22=1
+    BSF	    PORTD,1,0 ;LED_HOT
+    GOTO    back1
+next2:
+    MOVLW   0x02 
+    MOVWF   0x22,0 ;REG22=2
+    BSF	    PORTD,2,0 ;LED_COOL
+back1:
+    MOVLW   0x00
+    MOVWF   0x30,0 ;Set counter
+    MOVLW   measuredTempInput
+    MOVWF   0x31,1 ;copy measuredtemp
+loop1:
+    CLRF    STATUS,0 
+    INCF    0x30,1,0 ;add one to counter
+    MOVFF   0x31,0x32 ;copy current measuretemp
+    MOVLW   0x0A
+    SUBWF   0x31,1,0 ;subtract 10 from measuredtemp
+    BC	    loop1 ;go to loop1 if  carry bit is not set (if measuredtemp is not negative loop)
+    DECF    0x30,1,0 ;subtract one for counter to fix the extra one the loop adds
+    MOVFF   0x30,0x71 ;set tenth place bit to counter value
+    MOVFF   0x32,0x72 ;set ones place bit to the previous measuredtemp (current measuredtemp + 10)
+
+    MOVLW   0x00 ;this and below is the hex to decimal but for ref instead of measured temp
+    MOVWF   0x40,0
+    MOVLW   refTempInput
+    MOVWF   0x41,1
+loop2:
+    CLRF    STATUS,0
+    INCF    0x40,1,0
+    MOVFF   0x41,0x42
+    MOVLW   0x0A
+    SUBWF   0x41,1,0
+    BC	    loop2
+    DECF    0x40,1,0
+    MOVFF   0x40,0x61
+    MOVFF   0x42,0x62
+    
+   
+SLEEP
+
+
